@@ -1,4 +1,6 @@
-# Welcome to your Expo app 👋
+# Welcome to Payment Transfer Module application
+
+![Simulator Screen Recording - iPhone 16 Plus - 2024-11-18 at 01 09 09](https://github.com/user-attachments/assets/bd95a415-164d-48f0-b0c6-8cca7a027de6)
 
 This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
 
