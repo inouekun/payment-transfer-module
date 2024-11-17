@@ -1,17 +1,19 @@
 import { View, StyleSheet, Alert } from 'react-native';
 import React, { useState } from 'react';
 import { Link } from 'expo-router';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, Controller, SubmitHandler } from 'react-hook-form';
 import { TextInput, Button, Text, Card, useTheme } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as LocalAuthentication from 'expo-local-authentication';
+import { useMainStore } from '@/stores/useStore';
 
 type Data = { recipient: string; amount: string; note?: string };
 
 const Payment = () => {
   const { colors } = useTheme();
 
-  const [balance, setBalance] = useState(5000); // Simulated account balance
-
+  // const [balance, setBalance] = useState(5000); // Simulated account balance
+  const { fund, spend } = useMainStore();
   const {
     control,
     handleSubmit,
@@ -19,19 +21,54 @@ const Payment = () => {
     setError,
   } = useForm<Data>();
 
-  const onSubmit = (data: Data) => {
+  const handleBiometricAuthentication = async (): Promise<boolean> => {
+    try {
+      const hasHardware = await LocalAuthentication.hasHardwareAsync();
+      if (!hasHardware) {
+        Alert.alert('Error', 'Biometric authentication is not supported on this device.');
+        return false;
+      }
+
+      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+      if (!isEnrolled) {
+        Alert.alert('Error', 'No biometric authentication methods are enrolled.');
+        return false;
+      }
+
+      const result = await LocalAuthentication.authenticateAsync({
+        promptMessage: 'Authenticate to confirm payment',
+        fallbackLabel: 'Use PIN',
+      });
+
+      if (result.success) {
+        return true;
+      } else {
+        Alert.alert('Authentication Failed', 'Unable to authenticate. Please try again.');
+        return false;
+      }
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Error', 'An error occurred during authentication.');
+      return false;
+    }
+  };
+
+  const onSubmit: SubmitHandler<Data> = async (data) => {
     const { recipient, amount } = data;
     const amountNumber = parseFloat(amount);
 
-    if (amountNumber > balance) {
+    if (amountNumber > fund) {
       alert("You don't have enough funds to complete this transaction.");
-      Alert.alert('Insufficient Balance', "You don't have enough funds to complete this transaction.");
+      // Alert.alert('Insufficient Balance', "You don't have enough funds to complete this transaction.");
       return;
     }
 
+    const isAuthenticated = await handleBiometricAuthentication();
+    if (!isAuthenticated) return;
+
     alert(`You have sent RM${amount} to ${recipient}.`);
-    Alert.alert('Payment Successful', `You have sent $${amount} to ${recipient}.`);
-    setBalance((prev) => prev - amountNumber);
+    // Alert.alert('Payment Successful', `You have sent $${amount} to ${recipient}.`);
+    spend(amountNumber);
   };
 
   return (
@@ -39,7 +76,7 @@ const Payment = () => {
       <Card style={styles.card}>
         <Card.Title title='Payment Transfer' />
         <Card.Content>
-          <Text style={styles.balance}>Current Balance: RM {balance.toFixed(2)}</Text>
+          <Text style={styles.balance}>Current Balance: RM {fund.toFixed(2)}</Text>
 
           <Controller
             control={control}

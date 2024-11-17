@@ -3,9 +3,12 @@ import { Button, Card, Text } from 'react-native-paper';
 import React from 'react';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useStore } from 'zustand';
+import { useMainStore } from '@/stores/useStore';
 
 const Home: React.FC = () => {
   const router = useRouter();
+  const { fund } = useMainStore();
 
   return (
     <LinearGradient colors={['#4c669f', '#3b5998', '#192f6a']} style={styles.container}>
@@ -13,7 +16,7 @@ const Home: React.FC = () => {
       <Card mode='elevated' style={styles.card}>
         <Card.Title title='Your Balance' style={styles.cardTitle} />
         <Card.Content>
-          <Text style={styles.balance}>$12,345.67</Text>
+          <Text style={styles.balance}>RM {fund}</Text>
           <Text style={styles.subtitle}>Last updated: Just now</Text>
         </Card.Content>
         <Card.Actions style={styles.cardAction}>
