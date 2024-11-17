@@ -1,25 +1,42 @@
 import { View, StyleSheet, Alert } from 'react-native';
 import React, { useState } from 'react';
-import { Link } from 'expo-router';
+import { Link, useNavigation, useRouter } from 'expo-router';
 import { useForm, Controller, SubmitHandler } from 'react-hook-form';
 import { TextInput, Button, Text, Card, useTheme } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as LocalAuthentication from 'expo-local-authentication';
-import { useMainStore } from '@/stores/useStore';
+import { useMainStore, useTransactionStore } from '@/stores/useStore';
 
 type Data = { recipient: string; amount: string; note?: string };
 
 const Payment = () => {
   const { colors } = useTheme();
+  const router = useRouter();
 
-  // const [balance, setBalance] = useState(5000); // Simulated account balance
   const { fund, spend } = useMainStore();
+  const { setTransaction, clearTransaction } = useTransactionStore();
+
   const {
     control,
     handleSubmit,
     formState: { errors },
     setError,
   } = useForm<Data>();
+
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const simulateApiCall = (amount: number, currentBalance: number): Promise<boolean> => {
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        if (amount > currentBalance) {
+          reject(new Error('Insufficient funds'));
+        } else {
+          spend(amount);
+          resolve(true); // Simulate successful transaction
+        }
+      }, 2000); // Simulate network delay
+    });
+  };
 
   const handleBiometricAuthentication = async (): Promise<boolean> => {
     try {
@@ -53,22 +70,36 @@ const Payment = () => {
     }
   };
 
-  const onSubmit: SubmitHandler<Data> = async (data) => {
+  const onSubmit = async (data: Data) => {
     const { recipient, amount } = data;
     const amountNumber = parseFloat(amount);
 
-    if (amountNumber > fund) {
-      alert("You don't have enough funds to complete this transaction.");
-      // Alert.alert('Insufficient Balance', "You don't have enough funds to complete this transaction.");
-      return;
-    }
-
     const isAuthenticated = await handleBiometricAuthentication();
-    if (!isAuthenticated) return;
+    // Had to disable because am having issue getting simulator up and running
+    // if (!isAuthenticated) return;
 
-    alert(`You have sent RM${amount} to ${recipient}.`);
-    // Alert.alert('Payment Successful', `You have sent $${amount} to ${recipient}.`);
-    spend(amountNumber);
+    setIsProcessing(true);
+
+    try {
+      // Simulate API call
+      const success = await simulateApiCall(amountNumber, fund);
+
+      if (success) {
+        setTransaction({
+          transactionId: `TXN-${Math.floor(Math.random() * 10000)}`,
+          recipient,
+          amount: amountNumber,
+          status: 'successful',
+        });
+        router.push('/confirmation');
+      } else {
+        throw new Error('Transaction Failed');
+      }
+    } catch (error: any) {
+      Alert.alert('Transaction Error', error.message || 'An error occurred while processing the transaction.');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
@@ -83,7 +114,17 @@ const Payment = () => {
             name='recipient'
             rules={{ required: 'Recipient is required' }}
             render={({ field: { onChange, onBlur, value } }) => (
-              <TextInput label='Recipient' mode='outlined' placeholder='Enter recipient name' onBlur={onBlur} onChangeText={onChange} value={value} style={styles.input} error={!!errors.recipient} />
+              <TextInput
+                disabled={isProcessing}
+                label='Recipient'
+                mode='outlined'
+                placeholder='Enter recipient name'
+                onBlur={onBlur}
+                onChangeText={onChange}
+                value={value}
+                style={styles.input}
+                error={!!errors.recipient}
+              />
             )}
           />
           {errors.recipient && <Text style={styles.error}>{errors.recipient.message as string}</Text>}
@@ -97,6 +138,7 @@ const Payment = () => {
             }}
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
+                disabled={isProcessing}
                 label='Amount'
                 mode='outlined'
                 placeholder='Enter amount'
@@ -115,12 +157,21 @@ const Payment = () => {
             control={control}
             name='note'
             render={({ field: { onChange, onBlur, value } }) => (
-              <TextInput label='Note (optional)' mode='outlined' placeholder='Add a note for the recipient' onBlur={onBlur} onChangeText={onChange} value={value} style={styles.input} />
+              <TextInput
+                disabled={isProcessing}
+                label='Note (optional)'
+                mode='outlined'
+                placeholder='Add a note for the recipient'
+                onBlur={onBlur}
+                onChangeText={onChange}
+                value={value}
+                style={styles.input}
+              />
             )}
           />
 
-          <Button mode='contained' onPress={handleSubmit(onSubmit)} style={[styles.button, { backgroundColor: colors.primary }]}>
-            Transfer
+          <Button disabled={isProcessing} mode='contained' onPress={handleSubmit(onSubmit)}>
+            {isProcessing ? 'Processing...' : 'Transfer'}
           </Button>
         </Card.Content>
       </Card>

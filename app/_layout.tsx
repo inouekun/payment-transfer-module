@@ -76,6 +76,7 @@ export default function RootLayout() {
     <PaperProvider theme={theme}>
       <Stack>
         <Stack.Screen name='(tabs)' options={{ headerShown: false }} />
+        <Stack.Screen name='confirmation' options={{ headerShown: false }} />
       </Stack>
     </PaperProvider>
   );
