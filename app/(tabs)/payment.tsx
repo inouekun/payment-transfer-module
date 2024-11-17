@@ -76,7 +76,7 @@ const Payment = () => {
 
     const isAuthenticated = await handleBiometricAuthentication();
     // Had to disable because am having issue getting simulator up and running
-    // if (!isAuthenticated) return;
+    if (!isAuthenticated) return;
 
     setIsProcessing(true);
 
